@@ -14,6 +14,15 @@ FastAPI service that accepts intake payloads from Pixel backend and creates tick
 - Optional ERPNext Issue creation
 - ERPNext close sync on ticket lifecycle completion
 
+## Auth for webhooks
+
+Service accepts:
+
+- `Authorization: Bearer <INTEGRATION_TOKEN>`
+- Basic auth (`WEBHOOK_BASIC_USER` / `WEBHOOK_BASIC_PASSWORD`)
+
+Basic auth is useful for Zammad versions where webhook UI does not support custom headers.
+
 ## Zammad channel mapping
 
 If you created a custom Ticket field in Zammad for intake channel (for example `intake_channel`),
