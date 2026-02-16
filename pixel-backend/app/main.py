@@ -75,6 +75,8 @@ async def create_order(payload: OrderCreate) -> OrderOut:
             "customer_name": payload.client_name,
             "phone": payload.client_phone,
             "device": f"{payload.device_type} {(payload.model or '').strip()}".strip(),
+            "device_type": payload.device_type,
+            "model": (payload.model or "").strip() or None,
             "problem": payload.problem_description,
             "service_point": branch["name"],
             "tg_user_id": int(payload.client_telegram) if payload.client_telegram.isdigit() else 0,
