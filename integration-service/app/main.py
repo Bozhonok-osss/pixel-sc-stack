@@ -68,10 +68,12 @@ async def intake(
     try:
         zammad_result = await zammad.create_ticket(payload)
         erp_result = await erpnext.create_issue(payload, zammad_result.get("ticket_number"))
-        ticket_id = zammad_result.get("ticket_id")
+        ticket_id_raw = zammad_result.get("ticket_id")
+        ticket_id = ticket_id_raw if isinstance(ticket_id_raw, int) else None
+        ticket_number = str(zammad_result.get("ticket_number") or "")
         issue_ref = erp_result.get("issue")
-        if isinstance(ticket_id, int) and isinstance(issue_ref, str) and issue_ref:
-            await zammad.set_ticket_erp_issue(ticket_id, issue_ref)
+        if isinstance(issue_ref, str) and issue_ref:
+            await zammad.set_ticket_erp_issue(ticket_id, issue_ref, ticket_number)
         response_data = {
             "success": True,
             "idempotency_key": idempotency_key,
@@ -142,7 +144,7 @@ async def zammad_create_sync(payload: CreateSyncRequest) -> CreateSyncResponse:
         result = await erpnext.create_issue_from_zammad(payload)
         issue_ref = result.get("issue")
         if isinstance(issue_ref, str) and issue_ref:
-            await zammad.set_ticket_erp_issue(payload.zammad_ticket_id, issue_ref)
+            await zammad.set_ticket_erp_issue(payload.zammad_ticket_id, issue_ref, payload.zammad_ticket_number)
             return CreateSyncResponse(
                 success=True,
                 zammad_ticket_id=payload.zammad_ticket_id,
