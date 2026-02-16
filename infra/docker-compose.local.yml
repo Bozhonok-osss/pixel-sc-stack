@@ -1,0 +1,50 @@
+services:
+  integration-service:
+    build:
+      context: ../integration-service
+      dockerfile: Dockerfile
+    container_name: pixel-integration-service
+    env_file:
+      - ../integration-service/.env
+    ports:
+      - "8090:8090"
+    volumes:
+      - ../integration-service/data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pixel-backend:
+    build:
+      context: ../pixel-backend
+      dockerfile: Dockerfile
+    container_name: pixel-backend
+    env_file:
+      - ../pixel-backend/.env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../pixel-backend/data:/app/data
+    depends_on:
+      integration-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  bot:
+    build:
+      context: ..
+      dockerfile: bot/Dockerfile
+    container_name: pixel-bot
+    env_file:
+      - ../bot/.env
+    environment:
+      - BACKEND_URL=http://pixel-backend:8000
+    depends_on:
+      pixel-backend:
+        condition: service_healthy
