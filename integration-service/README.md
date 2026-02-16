@@ -6,6 +6,7 @@ FastAPI service that accepts intake payloads from Pixel backend and creates tick
 
 - `POST /api/intake`
 - `POST /api/zammad/close-sync`
+- `POST /api/zammad/create-sync`
 - Bearer token auth
 - `Idempotency-Key` support
 - SQLite persistence of results
@@ -61,6 +62,28 @@ Body example:
 ```
 
 `erp_issue_ref` is optional. If omitted, service tries to find ERP Issue by `zammad_ticket_number` using stored intake records in SQLite.
+
+## Create sync payload (manual Zammad tickets)
+
+Use this endpoint from a Zammad webhook/trigger on ticket creation for manual tickets.
+It creates ERP Issue and writes Issue ID back to Zammad custom field (`ZAMMAD_ERP_ISSUE_FIELD`).
+
+`POST /api/zammad/create-sync`
+
+Body example:
+
+```json
+{
+  "zammad_ticket_id": 25,
+  "zammad_ticket_number": "67022",
+  "customer_name": "Ivan",
+  "phone": "+79990000000",
+  "device": "iPhone 13",
+  "problem": "Does not power on",
+  "service_point": "Belorechenskaya",
+  "erp_issue_ref": ""
+}
+```
 
 ## Run locally
 

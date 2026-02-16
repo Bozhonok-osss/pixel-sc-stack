@@ -5,7 +5,7 @@ from typing import Any
 import httpx
 
 from app.config import Settings
-from app.models import CloseSyncRequest, IntakeRequest
+from app.models import CloseSyncRequest, CreateSyncRequest, IntakeRequest
 
 
 class ERPNextClient:
@@ -86,6 +86,27 @@ class ERPNextClient:
 
         return {"issue": issue_name, "updated": True, "raw": data}
 
+    async def create_issue_from_zammad(self, payload: CreateSyncRequest) -> dict[str, Any]:
+        if not self.is_enabled():
+            return {"issue": None, "skipped": True}
+
+        headers = {
+            "Authorization": f"token {self.settings.erpnext_api_key}:{self.settings.erpnext_api_secret}",
+            "Content-Type": "application/json",
+        }
+        issue_payload = {
+            "subject": f"Pixel SC / {payload.device or '-'} / {payload.customer_name}",
+            "description": self._build_create_description(payload),
+        }
+        url = f"{self.settings.erpnext_base_url.rstrip('/')}/api/resource/{self.settings.erpnext_issue_doctype}"
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.post(url, headers=headers, json=issue_payload)
+            resp.raise_for_status()
+            data = resp.json()
+
+        issue_name = ((data or {}).get("data") or {}).get("name")
+        return {"issue": issue_name, "raw": data}
+
     def _build_close_description(self, payload: CloseSyncRequest) -> str:
         lines = [
             "Pixel SC close sync",
@@ -104,4 +125,24 @@ class ERPNextClient:
             lines.append(f"Warranty days: {payload.warranty_days}")
         if payload.note:
             lines.append(f"Note: {payload.note}")
+        return "\n".join(lines)
+
+    def _build_create_description(self, payload: CreateSyncRequest) -> str:
+        lines = [
+            "Pixel SC create sync from Zammad",
+            f"Zammad ticket: {payload.zammad_ticket_number}",
+            f"Customer: {payload.customer_name}",
+        ]
+        if payload.phone:
+            lines.append(f"Phone: {payload.phone}")
+        if payload.device:
+            lines.append(f"Device: {payload.device}")
+        if payload.problem:
+            lines.append(f"Problem: {payload.problem}")
+        if payload.service_point:
+            lines.append(f"Service point: {payload.service_point}")
+        if payload.tg_user_id is not None:
+            lines.append(f"Telegram user id: {payload.tg_user_id}")
+        if payload.tg_username:
+            lines.append(f"Telegram username: @{payload.tg_username}")
         return "\n".join(lines)

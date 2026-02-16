@@ -8,7 +8,14 @@ from fastapi import Depends, FastAPI, Header, HTTPException, status
 from app.config import Settings, load_settings
 from app.db import compute_hash, find_by_idempotency, find_erp_issue_by_ticket_number, init_db, save_error, save_success
 from app.erpnext import ERPNextClient
-from app.models import CloseSyncRequest, CloseSyncResponse, IntakeRequest, IntakeResponse
+from app.models import (
+    CloseSyncRequest,
+    CloseSyncResponse,
+    CreateSyncRequest,
+    CreateSyncResponse,
+    IntakeRequest,
+    IntakeResponse,
+)
 from app.zammad import ZammadClient
 
 app = FastAPI(title="Pixel SC Integration Service", version="0.1.0")
@@ -118,3 +125,37 @@ async def zammad_close_sync(payload: CloseSyncRequest) -> CloseSyncResponse:
         )
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Close sync error: {exc}") from exc
+
+
+@app.post("/api/zammad/create-sync", response_model=CreateSyncResponse, dependencies=[Depends(require_token)])
+async def zammad_create_sync(payload: CreateSyncRequest) -> CreateSyncResponse:
+    if payload.erp_issue_ref:
+        return CreateSyncResponse(
+            success=True,
+            zammad_ticket_id=payload.zammad_ticket_id,
+            zammad_ticket_number=payload.zammad_ticket_number,
+            erpnext_issue=payload.erp_issue_ref,
+            created=False,
+        )
+
+    try:
+        result = await erpnext.create_issue_from_zammad(payload)
+        issue_ref = result.get("issue")
+        if isinstance(issue_ref, str) and issue_ref:
+            await zammad.set_ticket_erp_issue(payload.zammad_ticket_id, issue_ref)
+            return CreateSyncResponse(
+                success=True,
+                zammad_ticket_id=payload.zammad_ticket_id,
+                zammad_ticket_number=payload.zammad_ticket_number,
+                erpnext_issue=issue_ref,
+                created=True,
+            )
+        return CreateSyncResponse(
+            success=True,
+            zammad_ticket_id=payload.zammad_ticket_id,
+            zammad_ticket_number=payload.zammad_ticket_number,
+            erpnext_issue=None,
+            created=False,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Create sync error: {exc}") from exc
