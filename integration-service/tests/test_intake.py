@@ -22,7 +22,7 @@ def test_intake_success_and_replay(monkeypatch, tmp_path: Path):
     async def fake_erp_create(payload, zammad_ticket_number):
         return {"issue": None}
 
-    async def fake_set_ticket_erp_issue(ticket_id, issue_ref):
+    async def fake_set_ticket_erp_issue(ticket_id, issue_ref, ticket_number=None):
         raise AssertionError("set_ticket_erp_issue should not be called when ERP issue is missing")
 
     monkeypatch.setattr(main_module.zammad, "create_ticket", fake_zammad_create)
@@ -63,10 +63,10 @@ def test_intake_sets_erp_issue_ref_in_zammad(monkeypatch, tmp_path: Path):
     async def fake_erp_create(payload, zammad_ticket_number):
         return {"issue": "ISS-2026-00001"}
 
-    calls: list[tuple[int, str]] = []
+    calls: list[tuple[int | None, str, str | None]] = []
 
-    async def fake_set_ticket_erp_issue(ticket_id, issue_ref):
-        calls.append((ticket_id, issue_ref))
+    async def fake_set_ticket_erp_issue(ticket_id, issue_ref, ticket_number=None):
+        calls.append((ticket_id, issue_ref, ticket_number))
 
     monkeypatch.setattr(main_module.zammad, "create_ticket", fake_zammad_create)
     monkeypatch.setattr(main_module.zammad, "set_ticket_erp_issue", fake_set_ticket_erp_issue)
@@ -88,7 +88,7 @@ def test_intake_sets_erp_issue_ref_in_zammad(monkeypatch, tmp_path: Path):
     }
     resp = client.post("/api/intake", json=payload, headers=headers)
     assert resp.status_code == 200
-    assert calls == [(202, "ISS-2026-00001")]
+    assert calls == [(202, "ISS-2026-00001", "67022")]
 
 
 def test_intake_requires_token(tmp_path: Path):
@@ -158,10 +158,10 @@ def test_create_sync_creates_issue_and_writes_back(monkeypatch, tmp_path: Path):
     async def fake_create_issue_from_zammad(payload):
         return {"issue": "ISS-2026-00123"}
 
-    calls: list[tuple[int, str]] = []
+    calls: list[tuple[int | None, str, str | None]] = []
 
-    async def fake_set_ticket_erp_issue(ticket_id, issue_ref):
-        calls.append((ticket_id, issue_ref))
+    async def fake_set_ticket_erp_issue(ticket_id, issue_ref, ticket_number=None):
+        calls.append((ticket_id, issue_ref, ticket_number))
 
     monkeypatch.setattr(main_module.erpnext, "create_issue_from_zammad", fake_create_issue_from_zammad)
     monkeypatch.setattr(main_module.zammad, "set_ticket_erp_issue", fake_set_ticket_erp_issue)
@@ -183,14 +183,14 @@ def test_create_sync_creates_issue_and_writes_back(monkeypatch, tmp_path: Path):
     assert body["success"] is True
     assert body["created"] is True
     assert body["erpnext_issue"] == "ISS-2026-00123"
-    assert calls == [(999, "ISS-2026-00123")]
+    assert calls == [(999, "ISS-2026-00123", "67999")]
 
 
 def test_create_sync_skips_if_erp_issue_exists(monkeypatch, tmp_path: Path):
     async def fake_create_issue_from_zammad(payload):
         raise AssertionError("create_issue_from_zammad should not be called")
 
-    async def fake_set_ticket_erp_issue(ticket_id, issue_ref):
+    async def fake_set_ticket_erp_issue(ticket_id, issue_ref, ticket_number=None):
         raise AssertionError("set_ticket_erp_issue should not be called")
 
     monkeypatch.setattr(main_module.erpnext, "create_issue_from_zammad", fake_create_issue_from_zammad)

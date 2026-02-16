@@ -71,7 +71,12 @@ class ZammadClient:
             "raw": data,
         }
 
-    async def set_ticket_erp_issue(self, ticket_id: int, issue_ref: str) -> None:
+    async def set_ticket_erp_issue(
+        self,
+        ticket_id: int | None,
+        issue_ref: str,
+        ticket_number: str | None = None,
+    ) -> None:
         if not self.settings.zammad_token:
             return
         if not issue_ref:
@@ -85,12 +90,55 @@ class ZammadClient:
         }
         patch_payload = {self.settings.zammad_erp_issue_field: issue_ref}
         async with httpx.AsyncClient(timeout=20) as client:
+            resolved_ticket_id = ticket_id
+            if resolved_ticket_id is None and ticket_number:
+                resolved_ticket_id = await self._find_ticket_id_by_number(client, headers, ticket_number)
+
+            if resolved_ticket_id is None:
+                return
+
             resp = await client.put(
-                f"{self.settings.zammad_base_url.rstrip('/')}/api/v1/tickets/{ticket_id}",
+                f"{self.settings.zammad_base_url.rstrip('/')}/api/v1/tickets/{resolved_ticket_id}",
                 headers=headers,
                 json=patch_payload,
             )
+            if resp.status_code == 404 and ticket_number:
+                # Fallback: ticket id in payload may be stale, resolve by number.
+                fallback_id = await self._find_ticket_id_by_number(client, headers, ticket_number)
+                if fallback_id is not None and fallback_id != resolved_ticket_id:
+                    resp = await client.put(
+                        f"{self.settings.zammad_base_url.rstrip('/')}/api/v1/tickets/{fallback_id}",
+                        headers=headers,
+                        json=patch_payload,
+                    )
             resp.raise_for_status()
+
+    async def _find_ticket_id_by_number(
+        self,
+        client: httpx.AsyncClient,
+        headers: dict[str, str],
+        ticket_number: str,
+    ) -> int | None:
+        query = ticket_number.strip()
+        if not query:
+            return None
+        search_resp = await client.get(
+            f"{self.settings.zammad_base_url.rstrip('/')}/api/v1/tickets/search",
+            headers=headers,
+            params={"query": f"number:{query}"},
+        )
+        if search_resp.status_code >= 400:
+            return None
+        data = search_resp.json()
+        if not isinstance(data, list) or not data:
+            return None
+        first = data[0]
+        if not isinstance(first, dict):
+            return None
+        ticket_id = first.get("id")
+        if isinstance(ticket_id, int):
+            return ticket_id
+        return None
 
     async def _resolve_customer_id(
         self,
