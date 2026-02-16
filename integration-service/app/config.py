@@ -25,6 +25,7 @@ class Settings:
     zammad_channel_telegram_value: str
     zammad_user_tg_username_field: str
     zammad_user_tg_id_field: str
+    zammad_erp_issue_field: str
     enable_erp_issue: bool
     erpnext_base_url: str
     erpnext_api_key: str
@@ -47,6 +48,7 @@ def load_settings() -> Settings:
         zammad_channel_telegram_value=os.getenv("ZAMMAD_CHANNEL_TELEGRAM_VALUE", "telegram"),
         zammad_user_tg_username_field=os.getenv("ZAMMAD_USER_TG_USERNAME_FIELD", ""),
         zammad_user_tg_id_field=os.getenv("ZAMMAD_USER_TG_ID_FIELD", ""),
+        zammad_erp_issue_field=os.getenv("ZAMMAD_ERP_ISSUE_FIELD", "erp_issue_ref"),
         enable_erp_issue=_as_bool(os.getenv("ENABLE_ERP_ISSUE"), default=False),
         erpnext_base_url=os.getenv("ERPNEXT_BASE_URL", "http://127.0.0.1:8081"),
         erpnext_api_key=os.getenv("ERPNEXT_API_KEY", ""),
