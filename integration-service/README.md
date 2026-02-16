@@ -19,6 +19,15 @@ you can auto-mark Telegram tickets with:
 - `ZAMMAD_INTAKE_CHANNEL_FIELD=intake_channel`
 - `ZAMMAD_CHANNEL_TELEGRAM_VALUE=telegram`
 
+## Zammad user Telegram mapping
+
+If you added custom User fields in Zammad, you can map Telegram data into them:
+
+- `ZAMMAD_USER_TG_USERNAME_FIELD=tg_username` (example)
+- `ZAMMAD_USER_TG_ID_FIELD=tg_user_id` (example)
+
+Leave them empty to skip mapping.
+
 ## Run locally
 
 ```bash

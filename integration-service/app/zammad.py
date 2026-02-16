@@ -45,9 +45,14 @@ class ZammadClient:
                     "subject": "Intake from Telegram bot",
                     "body": description,
                     "type": "note",
-                    "internal": False,
+                    "internal": True,
                 },
             }
+            # Map Telegram intake details to Zammad custom ticket attributes.
+            request_data["device_type"] = payload.device_type or ""
+            request_data["device_model"] = payload.model or ""
+            request_data["declared_issue"] = payload.problem
+            request_data["service_point"] = payload.service_point
             if self.settings.zammad_intake_channel_field:
                 request_data[self.settings.zammad_intake_channel_field] = (
                     self.settings.zammad_channel_telegram_value
@@ -135,7 +140,7 @@ class ZammadClient:
         if username:
             note_lines.append(f"Telegram username: @{username}")
 
-        return {
+        customer_payload: dict[str, Any] = {
             "firstname": firstname,
             "lastname": lastname,
             "email": email,
@@ -143,6 +148,12 @@ class ZammadClient:
             "phone": payload.phone,
             "note": "\n".join(note_lines),
         }
+        # Optional mapping to custom Zammad User attributes configured in .env.
+        if self.settings.zammad_user_tg_username_field:
+            customer_payload[self.settings.zammad_user_tg_username_field] = username
+        if self.settings.zammad_user_tg_id_field:
+            customer_payload[self.settings.zammad_user_tg_id_field] = str(payload.tg_user_id)
+        return customer_payload
 
     def _build_customer_email(self, payload: IntakeRequest) -> str:
         if payload.tg_user_id > 0:

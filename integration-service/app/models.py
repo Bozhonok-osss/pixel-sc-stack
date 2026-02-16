@@ -7,6 +7,8 @@ class IntakeRequest(BaseModel):
     customer_name: str = Field(min_length=1, max_length=120)
     phone: str = Field(min_length=1, max_length=40)
     device: str = Field(min_length=1, max_length=200)
+    device_type: str | None = Field(default=None, max_length=40)
+    model: str | None = Field(default=None, max_length=120)
     problem: str = Field(min_length=1, max_length=3000)
     service_point: str = Field(min_length=1, max_length=255)
     tg_user_id: int
@@ -20,4 +22,3 @@ class IntakeResponse(BaseModel):
     zammad_ticket_number: str | None = None
     erpnext_issue: str | None = None
     replayed: bool = False
-
