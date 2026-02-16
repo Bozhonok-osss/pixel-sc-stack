@@ -6,9 +6,9 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 
 from app.config import Settings, load_settings
-from app.db import compute_hash, find_by_idempotency, init_db, save_error, save_success
+from app.db import compute_hash, find_by_idempotency, find_erp_issue_by_ticket_number, init_db, save_error, save_success
 from app.erpnext import ERPNextClient
-from app.models import IntakeRequest, IntakeResponse
+from app.models import CloseSyncRequest, CloseSyncResponse, IntakeRequest, IntakeResponse
 from app.zammad import ZammadClient
 
 app = FastAPI(title="Pixel SC Integration Service", version="0.1.0")
@@ -61,6 +61,10 @@ async def intake(
     try:
         zammad_result = await zammad.create_ticket(payload)
         erp_result = await erpnext.create_issue(payload, zammad_result.get("ticket_number"))
+        ticket_id = zammad_result.get("ticket_id")
+        issue_ref = erp_result.get("issue")
+        if isinstance(ticket_id, int) and isinstance(issue_ref, str) and issue_ref:
+            await zammad.set_ticket_erp_issue(ticket_id, issue_ref)
         response_data = {
             "success": True,
             "idempotency_key": idempotency_key,
@@ -89,3 +93,28 @@ async def intake(
         )
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Integration error: {exc}") from exc
 
+
+@app.post("/api/zammad/close-sync", response_model=CloseSyncResponse, dependencies=[Depends(require_token)])
+async def zammad_close_sync(payload: CloseSyncRequest) -> CloseSyncResponse:
+    issue_name = payload.erp_issue_ref
+    if not issue_name:
+        issue_name = find_erp_issue_by_ticket_number(settings.sqlite_path, payload.zammad_ticket_number)
+
+    if not issue_name:
+        return CloseSyncResponse(
+            success=True,
+            zammad_ticket_number=payload.zammad_ticket_number,
+            erpnext_issue=None,
+            updated=False,
+        )
+
+    try:
+        result = await erpnext.sync_close(issue_name, payload)
+        return CloseSyncResponse(
+            success=True,
+            zammad_ticket_number=payload.zammad_ticket_number,
+            erpnext_issue=result.get("issue"),
+            updated=bool(result.get("updated")),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Close sync error: {exc}") from exc

@@ -71,6 +71,27 @@ class ZammadClient:
             "raw": data,
         }
 
+    async def set_ticket_erp_issue(self, ticket_id: int, issue_ref: str) -> None:
+        if not self.settings.zammad_token:
+            return
+        if not issue_ref:
+            return
+        if not self.settings.zammad_erp_issue_field:
+            return
+
+        headers = {
+            "Authorization": f"Token token={self.settings.zammad_token}",
+            "Content-Type": "application/json",
+        }
+        patch_payload = {self.settings.zammad_erp_issue_field: issue_ref}
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.put(
+                f"{self.settings.zammad_base_url.rstrip('/')}/api/v1/tickets/{ticket_id}",
+                headers=headers,
+                json=patch_payload,
+            )
+            resp.raise_for_status()
+
     async def _resolve_customer_id(
         self,
         client: httpx.AsyncClient,

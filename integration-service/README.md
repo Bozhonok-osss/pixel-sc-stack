@@ -20,6 +20,7 @@ you can auto-mark Telegram tickets with:
 
 - `ZAMMAD_INTAKE_CHANNEL_FIELD=intake_channel`
 - `ZAMMAD_CHANNEL_TELEGRAM_VALUE=telegram`
+- `ZAMMAD_ERP_ISSUE_FIELD=erp_issue_ref`
 
 ## Zammad user Telegram mapping
 
@@ -29,6 +30,8 @@ If you added custom User fields in Zammad, you can map Telegram data into them:
 - `ZAMMAD_USER_TG_ID_FIELD=tg_uid` (example)
 
 Leave them empty to skip mapping.
+
+`ZAMMAD_ERP_ISSUE_FIELD` is used to write created ERP Issue ID back into the Zammad ticket custom field (for example `erp_issue_ref`).
 
 ## Close sync payload
 
