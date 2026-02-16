@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 from pathlib import Path
+import base64
 
 from fastapi.testclient import TestClient
 
@@ -13,6 +14,12 @@ def _client(tmp_path: Path) -> TestClient:
     main_module.settings.integration_token = "test-token"  # type: ignore[misc]
     main_module.on_startup()
     return TestClient(main_module.app)
+
+
+def _basic_auth_header(user: str, password: str) -> dict[str, str]:
+    raw = f"{user}:{password}".encode("utf-8")
+    token = base64.b64encode(raw).decode("utf-8")
+    return {"Authorization": f"Basic {token}"}
 
 
 def test_intake_success_and_replay(monkeypatch, tmp_path: Path):
@@ -104,6 +111,37 @@ def test_intake_requires_token(tmp_path: Path):
     }
     resp = client.post("/api/intake", json=payload)
     assert resp.status_code == 401
+
+
+def test_intake_accepts_basic_auth(monkeypatch, tmp_path: Path):
+    async def fake_zammad_create(payload):
+        return {"ticket_id": 101, "ticket_number": "101"}
+
+    async def fake_erp_create(payload, zammad_ticket_number):
+        return {"issue": None}
+
+    async def fake_set_ticket_erp_issue(ticket_id, issue_ref, ticket_number=None):
+        raise AssertionError("set_ticket_erp_issue should not be called when ERP issue is missing")
+
+    monkeypatch.setattr(main_module.zammad, "create_ticket", fake_zammad_create)
+    monkeypatch.setattr(main_module.zammad, "set_ticket_erp_issue", fake_set_ticket_erp_issue)
+    monkeypatch.setattr(main_module.erpnext, "create_issue", fake_erp_create)
+
+    client = _client(tmp_path)
+    main_module.settings.webhook_basic_user = "zammad-webhook"  # type: ignore[misc]
+    main_module.settings.webhook_basic_password = "zammad-pass"  # type: ignore[misc]
+
+    payload = {
+        "customer_name": "Ivan",
+        "phone": "+79990000000",
+        "device": "iPhone 13",
+        "problem": "Does not power on",
+        "service_point": "Belorechenskaya",
+        "tg_user_id": 123,
+        "tg_username": "ivan",
+    }
+    resp = client.post("/api/intake", json=payload, headers=_basic_auth_header("zammad-webhook", "zammad-pass"))
+    assert resp.status_code == 200
 
 
 def test_close_sync_updates_erp_issue(monkeypatch, tmp_path: Path):

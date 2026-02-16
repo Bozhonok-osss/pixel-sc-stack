@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import secrets
+from base64 import b64decode
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
@@ -30,13 +32,30 @@ def on_startup() -> None:
 
 
 def require_token(authorization: Annotated[str | None, Header()] = None) -> None:
-    if not settings.integration_token:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Server token is not configured")
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token")
-    token = authorization.replace("Bearer ", "", 1).strip()
-    if token != settings.integration_token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    bearer_ok = False
+    basic_ok = False
+
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "", 1).strip()
+        if settings.integration_token and secrets.compare_digest(token, settings.integration_token):
+            bearer_ok = True
+
+    if authorization and authorization.startswith("Basic "):
+        if settings.webhook_basic_user and settings.webhook_basic_password:
+            raw = authorization.replace("Basic ", "", 1).strip()
+            try:
+                decoded = b64decode(raw).decode("utf-8")
+            except Exception:
+                decoded = ""
+            if ":" in decoded:
+                user, pwd = decoded.split(":", 1)
+                if secrets.compare_digest(user, settings.webhook_basic_user) and secrets.compare_digest(
+                    pwd, settings.webhook_basic_password
+                ):
+                    basic_ok = True
+
+    if not (bearer_ok or basic_ok):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
 
 @app.get("/healthz")

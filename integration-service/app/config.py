@@ -14,6 +14,8 @@ def _as_bool(value: str | None, default: bool = False) -> bool:
 @dataclass
 class Settings:
     integration_token: str
+    webhook_basic_user: str
+    webhook_basic_password: str
     sqlite_path: str
     zammad_base_url: str
     zammad_token: str
@@ -37,6 +39,8 @@ def load_settings() -> Settings:
     default_db = str(Path(__file__).resolve().parents[1] / "data" / "integration.db")
     return Settings(
         integration_token=os.getenv("INTEGRATION_TOKEN", ""),
+        webhook_basic_user=os.getenv("WEBHOOK_BASIC_USER", ""),
+        webhook_basic_password=os.getenv("WEBHOOK_BASIC_PASSWORD", ""),
         sqlite_path=os.getenv("SQLITE_PATH", default_db),
         zammad_base_url=os.getenv("ZAMMAD_BASE_URL", "http://127.0.0.1:8080"),
         zammad_token=os.getenv("ZAMMAD_TOKEN", ""),
