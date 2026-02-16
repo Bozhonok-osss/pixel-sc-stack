@@ -387,12 +387,8 @@ async def confirm(message: Message, state: FSMContext):
         try:
             created = await api.create_order(payload)
             await state.clear()
-            zammad_number = created.get("zammad_ticket_number")
-            erp_issue = created.get("erpnext_issue")
-            erp_line = f"\nERPNext issue: {erp_issue}" if erp_issue else ""
-            z_line = f"\nZammad: {zammad_number}" if zammad_number else ""
             await message.answer(
-                f"✅ Заявка создана! Номер: {created.get('number', '')}{z_line}{erp_line}",
+                f"✅ Заявка создана! Номер: {created.get('number', '')}",
                 reply_markup=main_menu(is_admin(message.from_user.id), is_staff(message.from_user.id)),
             )
         except Exception as exc:
