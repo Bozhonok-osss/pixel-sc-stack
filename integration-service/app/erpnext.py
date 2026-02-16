@@ -29,7 +29,6 @@ class ERPNextClient:
         }
         issue_payload = {
             "subject": f"Pixel SC / {payload.device} / {payload.customer_name}",
-            "raised_by": payload.customer_name,
             "description": (
                 f"Phone: {payload.phone}\n"
                 f"Device: {payload.device}\n"
