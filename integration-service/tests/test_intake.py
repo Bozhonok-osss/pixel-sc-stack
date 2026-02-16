@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 
@@ -31,11 +31,13 @@ def test_intake_success_and_replay(monkeypatch, tmp_path: Path):
         "Idempotency-Key": "abc-1",
     }
     payload = {
-        "customer_name": "Иван",
+        "customer_name": "Ivan",
         "phone": "+79990000000",
         "device": "iPhone 13",
-        "problem": "Не включается",
-        "service_point": "Белореченская",
+        "device_type": "Smartphone",
+        "model": "A2633",
+        "problem": "Does not power on",
+        "service_point": "Belorechenskaya",
         "tg_user_id": 123,
         "tg_username": "ivan",
     }
@@ -53,14 +55,61 @@ def test_intake_success_and_replay(monkeypatch, tmp_path: Path):
 def test_intake_requires_token(tmp_path: Path):
     client = _client(tmp_path)
     payload = {
-        "customer_name": "Иван",
+        "customer_name": "Ivan",
         "phone": "+79990000000",
         "device": "iPhone 13",
-        "problem": "Не включается",
-        "service_point": "Белореченская",
+        "problem": "Does not power on",
+        "service_point": "Belorechenskaya",
         "tg_user_id": 123,
         "tg_username": "ivan",
     }
     resp = client.post("/api/intake", json=payload)
     assert resp.status_code == 401
 
+
+def test_close_sync_updates_erp_issue(monkeypatch, tmp_path: Path):
+    async def fake_sync_close(issue_name, payload):
+        assert issue_name == "ISS-2026-00099"
+        return {"issue": issue_name, "updated": True}
+
+    monkeypatch.setattr(main_module, "find_erp_issue_by_ticket_number", lambda *_: "ISS-2026-00099")
+    monkeypatch.setattr(main_module.erpnext, "sync_close", fake_sync_close)
+
+    client = _client(tmp_path)
+    headers = {"Authorization": "Bearer test-token"}
+    payload = {
+        "zammad_ticket_number": "67099",
+        "status": "Issued to customer",
+        "owner": "Master One",
+        "approved_price": 12000,
+        "repair_cost": 7000,
+        "warranty_days": 30,
+        "net_profit": 5000,
+    }
+    resp = client.post("/api/zammad/close-sync", json=payload, headers=headers)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["success"] is True
+    assert body["updated"] is True
+    assert body["erpnext_issue"] == "ISS-2026-00099"
+
+
+def test_close_sync_skips_when_issue_not_found(monkeypatch, tmp_path: Path):
+    async def fake_sync_close(issue_name, payload):
+        raise AssertionError("sync_close should not be called")
+
+    monkeypatch.setattr(main_module, "find_erp_issue_by_ticket_number", lambda *_: None)
+    monkeypatch.setattr(main_module.erpnext, "sync_close", fake_sync_close)
+
+    client = _client(tmp_path)
+    headers = {"Authorization": "Bearer test-token"}
+    payload = {
+        "zammad_ticket_number": "67111",
+        "status": "Closed",
+    }
+    resp = client.post("/api/zammad/close-sync", json=payload, headers=headers)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["success"] is True
+    assert body["updated"] is False
+    assert body["erpnext_issue"] is None

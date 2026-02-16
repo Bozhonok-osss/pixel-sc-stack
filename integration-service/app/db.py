@@ -127,3 +127,26 @@ def save_error(
             )
         conn.commit()
 
+
+def find_erp_issue_by_ticket_number(sqlite_path: str, ticket_number: str) -> str | None:
+    with sqlite3.connect(sqlite_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT response_body
+            FROM intake_requests
+            WHERE status = 'success' AND response_body IS NOT NULL
+            ORDER BY id DESC
+            """
+        ).fetchall()
+
+    for (response_body,) in rows:
+        try:
+            data = json.loads(response_body)
+        except Exception:
+            continue
+        if str(data.get("zammad_ticket_number") or "") == str(ticket_number):
+            issue = data.get("erpnext_issue")
+            if issue:
+                return str(issue)
+            return None
+    return None

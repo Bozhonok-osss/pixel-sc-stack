@@ -22,3 +22,22 @@ class IntakeResponse(BaseModel):
     zammad_ticket_number: str | None = None
     erpnext_issue: str | None = None
     replayed: bool = False
+
+
+class CloseSyncRequest(BaseModel):
+    zammad_ticket_number: str = Field(min_length=1, max_length=64)
+    erp_issue_ref: str | None = Field(default=None, max_length=140)
+    status: str = Field(min_length=1, max_length=80)
+    owner: str | None = Field(default=None, max_length=140)
+    approved_price: float | None = None
+    repair_cost: float | None = None
+    warranty_days: int | None = None
+    net_profit: float | None = None
+    note: str | None = Field(default=None, max_length=4000)
+
+
+class CloseSyncResponse(BaseModel):
+    success: bool
+    zammad_ticket_number: str
+    erpnext_issue: str | None = None
+    updated: bool = False
