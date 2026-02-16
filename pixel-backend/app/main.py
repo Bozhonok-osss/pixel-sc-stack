@@ -78,7 +78,7 @@ async def create_order(payload: OrderCreate) -> OrderOut:
             "problem": payload.problem_description,
             "service_point": branch["name"],
             "tg_user_id": int(payload.client_telegram) if payload.client_telegram.isdigit() else 0,
-            "tg_username": "",
+            "tg_username": (payload.tg_username or "").lstrip("@"),
         }
         zammad_ticket_number = None
         erpnext_issue = None

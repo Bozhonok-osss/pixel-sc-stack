@@ -10,6 +10,7 @@ class OrderCreate(BaseModel):
     client_name: str = Field(min_length=1, max_length=120)
     client_phone: str = Field(min_length=1, max_length=40)
     client_telegram: str = Field(min_length=1, max_length=64)
+    tg_username: str | None = Field(default=None, max_length=64)
     device_type: str = Field(min_length=1, max_length=40)
     model: str | None = Field(default=None, max_length=120)
     problem_description: str = Field(min_length=1, max_length=3000)
@@ -70,4 +71,3 @@ class AnalyticsSummary(BaseModel):
     revenue: float
     costs: float
     profit: float
-

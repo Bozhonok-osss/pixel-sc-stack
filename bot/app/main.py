@@ -377,6 +377,7 @@ async def confirm(message: Message, state: FSMContext):
             "client_name": data["client_name"],
             "client_phone": data["client_phone"],
             "client_telegram": str(message.from_user.id),
+            "tg_username": message.from_user.username or "",
             "device_type": {"phone": "Смартфон", "laptop": "Ноутбук", "tablet": "Планшет"}.get(
                 data["device_type"], data["device_type"]
             ),
