@@ -48,6 +48,10 @@ class ZammadClient:
                     "internal": False,
                 },
             }
+            if self.settings.zammad_intake_channel_field:
+                request_data[self.settings.zammad_intake_channel_field] = (
+                    self.settings.zammad_channel_telegram_value
+                )
             resp = await client.post(
                 f"{self.settings.zammad_base_url.rstrip('/')}/api/v1/tickets",
                 headers=headers,

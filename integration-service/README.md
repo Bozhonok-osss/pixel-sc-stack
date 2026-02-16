@@ -11,6 +11,14 @@ FastAPI service that accepts intake payloads from Pixel backend and creates tick
 - Zammad ticket creation
 - Optional ERPNext Issue creation
 
+## Zammad channel mapping
+
+If you created a custom Ticket field in Zammad for intake channel (for example `intake_channel`),
+you can auto-mark Telegram tickets with:
+
+- `ZAMMAD_INTAKE_CHANNEL_FIELD=intake_channel`
+- `ZAMMAD_CHANNEL_TELEGRAM_VALUE=telegram`
+
 ## Run locally
 
 ```bash
